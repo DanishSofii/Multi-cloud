@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = "mysql://root:686075@localhost:3306/multicloud"
+}
+
+model User {
+  id            Int         @id @default(autoincrement())
+  email         String      @unique
+  passwordHash  String
+  createdAt     DateTime    @default(now())
+
+  refreshTokens RefreshToken[]
+  cloudAuths    CloudAuth[]  // Change this from singular to an array
+  files         File[]
+}
+model CloudAuth {
+  id           Int      @id @default(autoincrement())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       Int
+  provider     String   // "gdrive", "dropbox", etc.
+  accountEmail String   @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+
+  partitions   FilePartitioning[]  // Add this line to define reverse relation
+}
+model RefreshToken {
+  id       Int    @id @default(autoincrement())
+  token    String @unique
+  userId   Int
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+
+model File {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  fileName    String
+  fileSize    BigInt
+  mimeType    String
+  gdriveFileId String  @unique
+  createdAt   DateTime @default(now())
+
+  partitions  FilePartitioning[]
+}
+
+
+model FilePartitioning {
+  id          Int     @id @default(autoincrement())
+  file        File    @relation(fields: [fileId], references: [id])
+  fileId      Int
+  chunkIndex  Int
+  gdrivePartId String
+  authId      Int    
+  cloudAuth   CloudAuth @relation(fields: [authId], references: [id])
+
+  // No changes needed here since CloudAuth now has the reverse relation
+}
